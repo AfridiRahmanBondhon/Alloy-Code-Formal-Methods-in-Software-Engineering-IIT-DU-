@@ -1,0 +1,95 @@
+enum Color {Green, Yellow, Red}
+
+one sig TrafficLight {
+  var col: Color
+}
+
+fun c: Color { TrafficLight.col }
+
+pred g { TrafficLight.col = Green }
+pred y { TrafficLight.col = Yellow }
+pred r { TrafficLight.col = Red }
+
+-- p 				<=>  p holds in the current state
+-- eventually p		<=>  p holds in the current state or a later one
+-- always p			<=>  p holds from current state forward
+-- after p			<=>  p holds in the next state
+-- p until q		<=>  q holds eventually and p holds continuously until then
+-- once p			<=>  p holds in current state or an earlier one
+-- historically p	<=>  p holds from current state backward
+-- before p			<=>  p holds in the previous state 
+-- p since q		<=>  p has held continuously since last time q held 
+-- eâ€™				 =   the value of e in next state
+
+fact {
+
+
+
+//  after not r
+//  eventually y
+
+// always (r or g)
+// always (r implies after not r) 
+// always (g implies after not g)
+ 
+/*  
+after c = Red
+
+--  eventually (y and eventually g)
+
+  always eventually (r and after r)  
+
+  always eventually (g and after g)
+  
+  always eventually y
+
+  always (y => before r)
+
+
+ (c = Red and c' = Red and c'' = Red and c''' = Green)
+ 
+ always eventually g
+ after always (r implies once g)
+*/
+}
+
+run {}
+
+
+pred TL {
+-- each light repeatedly turns on
+-- the light starts with red
+-- green directly follows red
+-- yellow directly follows green
+-- red directly follows yellow or red
+-- red is on twice in a row
+-- green is on twice in a row
+-- yellow is never on twice in a row
+}
+--------------------------------------------------------------
+			chatgpt
+pred TL {
+  -- Initialization: Starts with Red
+  init [T/first]
+  -- Transitions
+  transitions
+  -- Safety Properties
+  some t: Time | safe [t]
+}
+
+pred transitions {
+  all t: Time - T/last | let t' = T/next[t] |
+    (r[t] implies g[t']) or
+    (g[t] implies y[t']) or
+    (y[t] implies (r[t'] or y[t']))
+}
+--------------------------------------------------------------
+run TL
+ 
+assert a1 {
+-- no two lights are on at the same time
+  not (r and g)
+  not (r and y)  
+  not (g and y)  
+}
+check a1 for 20 steps

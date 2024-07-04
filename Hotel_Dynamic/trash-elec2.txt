@@ -1,0 +1,125 @@
+/* Exercises
+
+1. Complete the definition of the predicates restore and empty.
+2. Using the Analyzer, show that the same file can be perpetually deleted.
+3. Specify and verify the following properties stated for each empty
+   assertion below.
+
+Use only the following temporal operators:
+always, after, once, and primes (').
+*/
+
+var sig File {}
+var sig Trash in File {}
+
+enum Operator { Delete, Restore, Empty, Other }
+one sig Track { 
+  var op: Operator
+}
+
+-- Delete a file
+pred delete[f : File] { 
+  f not in Trash
+  Trash' = Trash + f 
+  File' = File
+
+  Track.op' = Delete
+}
+
+-- Restore a file
+pred restore[f : File] {
+  f in Trash
+  Trash' = Trash - f 
+  File' = File  
+
+  Track.op' = Restore
+} 
+
+
+-- Empty the trash
+pred empty {
+  some Trash
+  File' = File - Trash
+  Trash' = none
+
+  Track.op' = Empty
+}
+
+-- Do nothing
+pred other {
+  Trash' = Trash
+  File' = File 
+
+  Track.op' = Other
+}
+
+--------------------------
+-- File Management System
+--------------------------
+
+fact behavior { 
+  -- initial state
+  some File
+  no Trash
+
+  Track.op = Other
+
+  -- transitions
+  always (
+    (some f: File | delete[f] or restore[f]) or empty or other
+  )
+}
+
+run {}
+
+------------------------------
+-- Expected system properties
+------------------------------
+
+-- Every restored file was once deleted
+assert restoreAfterDelete {
+  always (all f : File | restore[f] implies once delete[f])
+}
+check restoreAfterDelete for 5 but 8 Time
+
+-- If the trash contains all files and is emptied
+-- then no files will ever exist afterwards
+assert deleteAll {
+  always ((File in Trash and empty) implies always no File)
+}
+check deleteAll for 5 but 8 Time
+
+-- The set of files never increases
+assert noNewFiles {
+  always File' in File
+}
+check noNewFiles for 5 but 8 Time
+
+-- The set of files changes when empty is performed
+assert emptyDestroysFiles {
+  always (empty implies File' != File)
+}
+check emptyDestroysFiles for 5 but 8 Time
+
+-- The set of files changes *only* when empty is performed
+assert onlyEmptyDestroysFiles {
+  always (File' != File implies empty)
+}
+check onlyEmptyDestroysFiles for 5 but 8 Time
+
+-- If files are never deleted the trash cannot be emptied
+assert noEmptyWithNoDelete {
+  always (once (some f: File | delete[f]) or not empty)
+}
+check noEmptyWithNoDelete for 5 but 8 Time
+
+-- Restoring a file immediately after deleting it undoes the delete
+assert restoreUndoesDelete {
+  always (
+    (some f: File | delete[f] and after restore[f]) implies Trash'' = Trash
+  )
+}
+check restoreUndoesDelete for 5 but 8 Time
+
+
+

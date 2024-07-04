@@ -1,0 +1,198 @@
+module family
+open util/ordering [Time] as T
+
+---------------- Signatures ----------------
+
+sig Time {}
+
+abstract sig Person {
+	children: Person set -> Time,
+	parents: Person set -> Time,
+	siblings: Person set -> Time,
+	spouse: Person lone -> Time,
+	alive: set Time
+} 
+
+sig Man, Woman extends Person {}
+
+---------------- Predicate ----------------
+
+-- Two persons are blood relatives at time t iff 
+-- they have a common ancestor at time t
+pred BloodRelatives [p: Person, q: Person, t: Time, ]  {
+	some p.*(parents.t) & q.*(parents.t)
+}
+
+---------------- Fact ----------------
+
+-- Define the parents relation
+fact parentsDef {
+      all t: Time | 
+       parents.t = ~(children.t)
+}
+
+-- A person P's siblings are those people with the same parents as P (excluding P)
+fact siblingsDef {
+	all t: Time | all p: Person | 
+		some p.parents.t
+		implies p.siblings.t = {q: Person | p.parents.t = q.parents.t} - p
+		else no p.siblings.t
+}
+
+fact staticOld {
+	-- No person can be their own ancestor
+	all t: Time | no p: Person | p in p.^(parents.t)
+
+	-- No person can have more than one father or mother
+	all t: Time | all p: Person | 
+           lone (p.parents.t & Man) and 
+           lone (p.parents.t & Woman)
+
+	-- Each married man (woman) has a wife (husband) 
+	all t: Time | all p: Person | 
+        let s = p.spouse.t |
+		  (p in Man implies s in Woman) and
+		  (p in Woman implies s in Man)
+
+	-- A spouse can't be a siblings
+	all t: Time | no p: Person | 
+           one p.spouse.t and p.spouse.t in p.siblings.t
+
+	-- A person can't be married to a blood relative
+	all t: Time | no p: Person | 
+       one p.spouse.t and BloodRelatives [p, p.spouse.t, t]
+
+	-- a person can't have children with a blood relative
+	all t: Time | all p, q: Person |
+	  (some (p.children.t & q.children.t) and p != q) implies
+          not BloodRelatives [p, q, t]
+  
+  -- the spouse relation is symmetric
+  all t: Time | spouse.t =  ~(spouse.t)
+}
+
+-- only living people can have children or be married
+fact staticAlive {
+	   all t: Time | all p: Person |
+	      let mainFields = children + spouse |
+                p !in alive.t implies
+                (no p.mainFields.t and no q: Person | p in q.mainFields.t)
+}
+
+
+------------------------ dynamic model ------------------------
+
+pred noChildrenChangeExcept [ps: set Person, t,t': Time, ] {
+	  all p: Person - ps | p.children.t' = p.children.t
+}
+
+pred noSpouseChangeExcept [ps: set Person, t,t': Time] {
+	  all p: Person - ps | p.spouse.t' = p.spouse.t
+}
+
+pred noAliveChange [t, t': Time] {
+	  alive.t' = alive.t
+}
+
+pred marriage [m: Man, w: Woman, t,t': Time] {
+	-- Precondition
+     -- m and w must be alive before marriage (at time t)
+	   m+w in alive.t
+	   -- m and w must not be married
+     no (m+w).spouse.t
+	-- Post-condition
+	   -- After marriage w is m's wife
+           m.spouse.t' = w
+           -- After marriage m is w's husband
+           -- w.spouse.t' = m
+	-- Frame condition
+      noChildrenChangeExcept [none, t, t']
+    	noSpouseChangeExcept [m+w, t, t']
+    	noAliveChange [t, t']
+}
+
+pred birth [t, t': Time]
+{
+	-- precondition and post-condition
+	   one p: Person |
+       p !in alive.t and alive.t' = alive.t + p
+	-- frame condition
+       noChildrenChangeExcept [none, t, t']
+      noSpouseChangeExcept [none, t, t']
+}
+
+pred birthFromParents [m: Man, w: Woman, t,t': Time] {
+	-- precondition
+		m+w in alive.t
+		m.spouse.t = w
+	-- precondition and post-condition
+		one p: Person | {
+			-- precondition
+			p !in alive.t
+			-- postcondition
+			alive.t' = alive.t + p
+			m.children.t' = m.children.t + p
+			w.children.t' = w.children.t + p
+		}
+	-- frame condition
+		noChildrenChangeExcept [m+w, t, t']
+		noSpouseChangeExcept [none, t, t']
+}
+
+pred init [t: Time] {
+	no children.t
+        no spouse.t
+	no alive.t
+}
+
+
+pred Trace {
+	init [T/first]
+    all t: Time-T/last | 
+      let t' = T/next [t] |
+		    birth [t, t'] or
+        (one m: Man, w: Woman | marriage [m, w, t, t']) or
+			  (one m: Man, w: Woman | birthFromParents [m, w, t, t'])
+}
+
+run {
+  Trace
+  #Man > 1
+  #Woman > 1
+  some p: Person | some p.children
+}  for 5 but 8 Time 
+
+
+------------------- predicate for finding instances -------------------
+
+pred marriageInstance {
+	some t: Time | some m: Man | some w: Woman | 
+		let t' = T/next [t] | marriage [m, w, t, t']
+}
+
+pred birthInstance {
+	some t: Time | let t' = T/next [t] | birth [t, t']
+}
+
+pred birthFromParentsInstance {
+	some t: Time | some m: Man | some w: Woman | 
+	let t' = T/next [t] | 
+		birthFromParents [m, w, t, t']
+}
+
+--------------------------- Run -----------------------------
+
+
+-- run marriage once
+run {
+	some t: Time | some m: Man | some w: Woman | 
+		let t' = T/next [t] | marriage [m, w, t, t']
+} for 5
+
+run {
+	marriageInstance
+	birthInstance
+    birthFromParentsInstance
+} for 5
+
+

@@ -1,0 +1,298 @@
+--===============================================
+-- CS:5810 Formal Methods in Software Engineering
+-- Fall 2017
+--
+-- Cesare Tinelli
+--===============================================
+
+
+/*
+This Alloy model models a dynamic domain involving several rovers 
+moving on in a two-dimentional space.
+
+The model is based on the following facts about this domain.
+
+- There are one or more identical rovers.
+- Each rover can only move forward, or turn in place to the left or 
+  to the right. 
+- Each rover can be turned on and off.
+
+We make the following simplifying modeling choices:
+
+1) We adopt an interleaving model of time, where only one action is performed, 
+by one of the rovers, at a time.
+
+2) The two dimentional space is a discrete grid, with the X-coordinate 
+growing indefinitely in the West-East direction and the Y-coordinate 
+growing indefinitely in the South-North direction (see picture below). 
+
+3) Rovers move only by one position at a time and along the X,Y axes.
+
+4) As a consequence of (2) and (3), a rover turns left or right by exactly
+   90 degrees. 
+
+4) A rover can move only in the direction it is facing.
+
+
+
+-----------------------------------------------------------------------
+y
+
+.    .   .   .   .   .  
+.    .   .   .   .   .  
+.    .   .   .   .   .   
+c4 |   |   |   |   |   | ...
+   ---------------------
+c3 |   |   |   |   |   | ...
+   ---------------------
+c2 |   |   |   |   |   | ...
+   ---------------------
+c1 |   |   |   |   |   | ...
+   ---------------------
+c0 |   |   |   |   |   | ...
+   ---------------------
+    c0  c1  c2  c3  c4  ...  x
+
+*/
+
+--open util/ordering [Time] as T
+open util/ordering [Coor] as C
+
+--sig Time {}
+
+-- Coordinates, strictly ordered
+sig Coor {} 
+
+-- Position models the individual positions in the grid
+sig Position {
+  x: Coor,
+  y: Coor
+}
+
+-- The four cardinal directions
+enum Direction { North, South, East, West }
+
+enum RunStatus { On, Off }
+
+some sig Rover {
+  -- direction rover is facing at any one time
+  var dir: Direction,
+
+  -- rover's position at any one time
+  var pos: Position,
+
+  -- rover's on/off status and any one time
+  var status: RunStatus
+}
+
+--------------------------------------
+-- Auxiliary predicates and functions
+--------------------------------------
+
+-- holds iff the on/off status of the rovers in R does not change
+pred no_on_changes [R: set Rover] {
+  all r: R | r.status' = r.status 
+}
+
+--  holds iff the position of the rovers in R does not change
+pred no_position_changes [R: set Rover] {
+  all r: R | r.pos' = r.pos 
+}
+
+-- holds iff the direction of the rovers in R does not change
+pred no_direction_changes [R: set Rover] {
+  all r: R | r.dir' = r.dir 
+}
+
+-- returns the position next to p along direction d, if any,
+-- and the empty set otherwise
+fun next_pos [p: Position, d: Direction]: Position {
+  -- pos_north_of_p (resp., pos_south_of_p, pos_east_of_p, and pos_west_of_p)
+  -- consists of the position immediately north (resp. south, east, and west)
+  -- of p, if such position exits. Otherwise, it is the empty set
+  let pos_north_of_p = { q: Position | q.x = p.x and q.y = C/next[p.y] } |
+  let pos_south_of_p = { q: Position | q.x = p.x and q.y = C/prev[p.y] } |
+  let pos_east_of_p  = { q: Position | q.y = p.y and q.x = C/next[p.x] } |
+  let pos_west_of_p  = { q: Position | q.y = p.y and q.x = C/prev[p.x] } |
+           (d = North) => pos_north_of_p 
+    else (d = South) => pos_south_of_p
+    else (d = East)  => pos_east_of_p
+    else pos_west_of_p
+}
+-- Note that pos_south_of_p, say, is empty if there is no position immediately 
+-- south of p because in that case C/prev[p.y] is empty. Since q.y is a singleton
+-- by definition of the Position signature, the condition of the comprehension 
+-- expression is false, hence there are no q's that satisfy it.
+-- The same argument applies to the other let variables.
+
+-------------
+-- Operators
+-------------
+
+pred turn_on [rov: Rover] {
+-- preconditions  
+   -- rover is off
+    rov.status = Off
+-- postconditions  
+   -- rover is on
+    rov.status' = On
+-- frame conditions
+   -- all other rovers stay on or off as they were
+   no_on_changes[Rover - rov]
+  -- No rover changes direction  
+   no_direction_changes[Rover]
+   -- No rover changes position
+   no_position_changes[Rover]
+}
+
+pred turn_off [rov: Rover] {
+-- preconditions  
+   -- rover is on
+    rov.status = On
+-- postconditions  
+   -- rover is off
+    rov.status' = Off
+-- frame conditions
+   -- all other rovers stay on or off as they were
+   no_on_changes[Rover - rov]
+  -- No rover changes direction  
+   no_direction_changes[Rover]
+   -- No rover changes position
+   no_position_changes[Rover]
+}
+
+pred turn_left [rov: Rover] {
+-- preconditions  
+   -- rover is on
+    rov.status = On
+-- postconditions
+   -- direction changes
+   let d = rov.dir |
+   let nd = (       (d = North) => West 
+                 else (d = West)  => South
+                 else (d = South) => East
+                 else North
+                ) |
+     rov.dir' = nd
+-- frame conditions
+   -- all rovers stay on or off as they were
+   no_on_changes[Rover]
+  -- No other rover changes direction  
+   no_direction_changes[Rover - rov]
+   -- No rover changes position
+   no_position_changes[Rover]
+}
+
+pred turn_right [rov: Rover] {
+-- preconditions  
+   -- rover is on
+    rov.status = On
+-- postconditions
+   -- direction changes
+   let d = rov.dir |
+   let nd = (       (d = North) => East
+                 else (d = West)  => North
+                 else (d = South) => West
+                 else South
+            ) |
+     rov.dir' = nd
+-- frame conditions
+   -- all rovers stay on or off as they were
+   no_on_changes[Rover]
+  -- No other rover changes direction  
+   no_direction_changes[Rover - rov]
+   -- No rover changes position
+   no_position_changes[Rover]
+}
+
+pred go [rov: Rover, d: Direction] {
+-- preconditions  
+   -- rover is on
+    rov.status = On
+   -- d is rover's direction
+   rov.dir = d
+   let np = next_pos[rov.pos, d] | {
+     -- precondition
+     some np
+     --postcondition
+     rov.pos' = np
+   }
+-- frame conditions
+   -- all rovers stay on or off as they were
+   no_on_changes[Rover]
+  -- No rover changes direction  
+   no_direction_changes[Rover]
+   -- No other rover changes position
+   no_position_changes[Rover - rov]
+}
+
+
+
+---------------------
+-- Transition system
+---------------------
+
+-- this predicate defines all possible transitions
+pred transition {
+  some r: Rover |
+    turn_on [r] or
+    turn_off [r] or
+    turn_left [r] or
+    turn_right [r] or
+    (some d: Direction | go [r, d])
+}
+
+
+one sig R1 extends Rover {}
+one sig P0 extends Position {}
+
+-- P0 is the origin position of the coordinate system
+fact {
+ P0.x = C/first 
+ P0.y = C/first
+}
+
+-- This predicate defines a possible initial state condition. 
+-- It is satisfied by states in which rover R1 is at the origin position, 
+-- facing East and turned off, while the other rovers, if any, are at
+-- a different position than R1's 
+pred init [] {
+   R1.pos = P0
+   R1.dir = East
+   R1.status = On
+   all r: Rover - R1 | R1.pos != r.pos
+}
+
+-------------------
+-- System predicate
+-------------------
+-- Denotes all possible executions of the system from a state
+-- that satisfies the init condition
+pred System {
+   init
+   always transition
+}
+
+-- Sample "goal" state condition.
+-- The predicate is satisfied by states in which R1 is not 
+-- at the origin and is facing north 
+pred goalReached {
+  R1.pos != P0
+  R1.dir = North
+}
+
+-- This predicate holds iff it is possible for the transition system
+-- to reach a state that satisfies the properties specified in goal,
+-- when starting from an initial state satisfying the initial state
+-- condition init
+pred goalCheck {
+ one Rover -- for simplicity
+ System
+ eventually goalReached
+} 
+
+-- check if the goal state is reachable
+run goalCheck for 5
+
+
+

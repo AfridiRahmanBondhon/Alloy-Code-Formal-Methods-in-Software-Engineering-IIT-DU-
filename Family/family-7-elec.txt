@@ -1,0 +1,320 @@
+module family
+
+--------------
+-- Signatures 
+--------------
+
+enum Liveness { Alive, Dead, Unborn }
+
+abstract sig Person {
+  -- primitive relations
+  var children: set Person,
+  var spouse: lone Person,
+  var liveness: Liveness
+} 
+
+sig Man, Woman extends Person {}
+
+enum Operator { Death, Birth, Marriage, Other }
+
+one sig Track { 
+  var op: lone Operator
+}
+
+--------------
+-- Predicates
+--------------
+
+pred isAlive [p: Person] { p.liveness = Alive }
+
+pred isDead [p: Person] { p.liveness = Dead }
+
+pred isUnborn [p: Person] { p.liveness = Unborn }
+
+-- True iff p has just been born 
+pred newBorn[p: Person] {
+  isAlive[p] and before !isAlive[p]
+}
+
+pred isMarried [p: Person] { some p.spouse }
+
+
+------------------------------
+-- Derived sets and relations
+------------------------------
+
+-- These derived relations are defined here as macros, to keep the model lean
+
+fun LivingPeople [] : Person {
+  liveness.Alive
+}
+
+fun parents []: Person -> Person {
+  ~children
+}
+
+fun siblings [p: Person ]: Person {
+  { q : Person - p | some q.parents and p.parents = q.parents }
+}
+
+-- Two persons are blood relatives at time t iff 
+-- they have a common ancestor at time t
+-- (alternative definition in based directly on children)
+pred BloodRelatives [p: Person, q: Person ]  {
+  some a: Person | p+q in a.*children	
+}
+
+------------------------------
+-- Frame condition predicates
+------------------------------
+
+pred noChildrenChangeExcept [P: set Person ] {
+  all p: Person - P | p.children' = p.children
+}
+
+pred noSpouseChangeExcept [P: set Person ] {
+  all p: Person - P | p.spouse' = p.spouse
+}
+
+pred noLivenessChangeExcept [P: set Person ] {
+  all p: Person - P | p.liveness' = p.liveness
+}
+
+-------------
+-- Operators
+-------------
+
+pred getMarried [p,q: Person] {
+
+  -- Pre-condition
+     -- p and q must be alive at time of marriage
+	 isAlive[p] and isAlive[q]
+	 -- neither must be married
+     no (p+q).spouse
+     -- they must not be blood relatives
+     not BloodRelatives [p, q]
+
+  -- Post-condition
+     -- After marriage they are each other's spouses
+     after q in p.spouse
+     after p in q.spouse
+
+  -- Frame condition
+     noChildrenChangeExcept [none]
+     noSpouseChangeExcept [p+q]
+     noLivenessChangeExcept [none]
+
+     Track.op' = Marriage
+}
+
+pred isBornFromParents [p: Person, m: Man, w: Woman ] {
+
+  -- Pre-condition
+     isAlive[w]
+     once isAlive[m]
+     isUnborn[p]
+
+  -- Post-condition and frame condition
+     after isAlive[p]
+     children' = children + (m -> p) + (w -> p)
+
+  -- Frame condition
+     noSpouseChangeExcept [none]
+     noLivenessChangeExcept [p]
+
+     Track.op' = Birth
+} 
+
+pred dies [p: Person] {
+
+  -- Pre-condition
+     isAlive[p]
+
+  -- Post-condition
+     after isDead[p]
+
+  -- Post-condition and frame condition
+     let q = p.spouse |
+       spouse' = spouse - ((p -> q) + (q -> p))
+
+  -- Frame condition
+     noLivenessChangeExcept [p]
+     noChildrenChangeExcept [none]
+
+     Track.op' = Death
+}
+
+pred other [] {
+
+  -- none of the relevant relations are impacted
+  children' = children
+  spouse' = spouse
+  liveness' = liveness
+
+  Track.op' = Other
+}
+
+---------------------------
+-- Inital state conditions
+---------------------------
+pred init [] {
+  no children
+  no spouse
+  no liveness.Dead
+  #LivingPeople > 1
+  #Person > #LivingPeople
+}
+
+-----------------------
+-- Transition relation
+-----------------------
+pred trans []  {
+     (some p: Person, m: Man, w: Woman | isBornFromParents [p, m, w])
+  or (some p, q: Person | getMarried [p, q])
+  or (some p :Person | dies [p])
+  or other
+}
+
+-------------------
+-- System predicate
+-------------------
+-- Denotes all possible executions of the system from a state
+-- that satisfies the init condition
+pred System {
+  init and always trans
+}
+
+---------------------------
+-- Sanity-check predicates
+---------------------------
+
+pred sc1 [] {
+  -- having children is possible
+  eventually some children
+}
+
+pred sc2 [] {
+  -- births can happen
+  eventually some p: Person | newBorn[p]
+}
+
+pred sc3 [] {
+  -- people can get married
+  eventually some disj p, q: Person | q in p.spouse
+}
+
+
+run {
+-- #Man > 1
+-- #Woman > 1
+ System
+ -- uncomment any of sanity-check predicates to check it
+  sc1
+  sc2
+  sc3
+}  for 10 but 8 Time 
+
+
+-- Nobody can be their own ancestor
+assert nobodyIsOwnAncestor {
+  System => always no p: Person | p in p.^parents
+}
+check nobodyIsOwnAncestor for 5 but 6 Time 
+
+-- Nobody can have more than one father or mother
+assert parentNumberLimit {
+  System => always all p: Person | 
+              lone (p.parents & Man) and 
+              lone (p.parents & Woman)
+}
+check parentNumberLimit for 5 but 6 Time 
+
+-- Only living people can have children
+assert onlyLivingPeopleHaveChildren {
+  System => always all p: Person |
+              some p.children implies isAlive[p]
+}
+check onlyLivingPeopleHaveChildren for 5 but 6 Time 
+
+-- Only people that are or have been alive can have children
+assert onlyOnceLivingPeopleHaveChildren {
+  System => always all p: Person |
+              some p.children implies once isAlive[p]
+}
+check onlyOnceLivingPeopleHaveChildren for 5 but 6 Time 
+
+-- Only living people can be married
+assert onlyLivingPeopleAreMarried {
+  System => always all p: Person |
+            isMarried[p] => isAlive[p]
+}
+check onlyLivingPeopleAreMarried for 5 but 6 Time 
+
+assert noResurrections {
+  System => always all p: Person | 
+              isDead[p] implies after isDead[p]
+}
+check noResurrections for 5 but 6 Time 
+
+assert deadOnlyFromAlive {
+  System => always all p: Person |
+              isDead[p] implies once isAlive[p]
+}
+check deadOnlyFromAlive for 5 but 6 Time 
+
+assert noImmortalityNoRegression {
+  System => always all p: Person |
+              isAlive[p] implies eventually isDead[p] and  
+                                 always !isUnborn[p]
+}
+check noImmortalityNoRegression for 5 but 6 Time 
+
+assert onceParentAlwaysParent {
+  System => always all p, q: Person |
+              p in q.parents implies always p in q.parents
+}
+check onceParentAlwaysParent for 5 but 6 Time 
+
+assert childrenAreBornFromPreviouslyAliveParents {
+  System => always all p, q: Person |
+              p in q.children implies !isUnborn[p] and once isAlive[q]
+}
+check childrenAreBornFromPreviouslyAliveParents for 5 but 6 Time 
+
+assert yourParentsAreManAndWoman {
+  System => always all p: Person | 
+              some p.parents implies some (p.parents & Man) and some (p.parents & Woman)
+}
+check yourParentsAreManAndWoman for 5 but 6 Time 
+
+assert youHaveParentsSinceYouWereBorn {
+  System => always all p: Person |
+              some p.parents implies (some p.parents since newBorn[p])
+}
+check youHaveParentsSinceYouWereBorn for 5 but 6 Time 
+
+assert yourMomIsAliveWhenYouAreBorn {
+  System => always all p: Person |
+              newBorn[p] implies isAlive[p.parents & Woman]
+}
+check yourMomIsAliveWhenYouAreBorn for 5 but 6 Time 
+
+-- Each married woman has a husband
+assert marriedWomenHaveHusbands {
+  System => always all w: Woman | 
+              isMarried[w] implies w.spouse in Man
+}
+check marriedWomenHaveHusbands for 5 but 6 Time 
+
+-- Spouses can't be siblings
+assert spousesAreNotSiblings {
+  System => always all p: Person | all q: p.spouse |
+              q !in siblings[p]
+}
+check spousesAreNotSiblings for 5 but 6 Time 
+
+ -- the spouse relation is symmetric
+assert spouseIsSymmetric {
+  System => always spouse = ~spouse
+}
+check spouseIsSymmetric for 5 but 6 Time 

@@ -1,0 +1,143 @@
+module family
+
+-------------- 
+-- Signatures 
+--------------
+
+enum Liveness { Alive, Dead, Unborn }
+
+abstract sig Person {
+  -- primitive relations
+  var children: set Person,
+  var liveness: Liveness
+} 
+
+sig Man, Woman extends Person {}
+
+
+------------------------------
+-- Derived sets and relations
+------------------------------
+
+-- These derived relations are defined here as macros, to keep the model lean
+
+fun LivingPeople [] : Person {
+  liveness.Alive
+}
+
+fun parents []: Person -> Person {
+  ~children
+}
+
+fun siblings [p: Person ]: Person {
+  { q : Person - p | some q.parents and p.parents = q.parents }
+}
+
+-------------- 
+-- Predicates
+--------------
+
+pred isAlive [p: Person] { p.liveness = Alive }
+
+pred isDead [p: Person] { p.liveness = Dead }
+
+pred isUnborn [p: Person] { p.liveness = Unborn }
+
+-- True iff p has just been born 
+pred newBorn[p: Person] {
+  isAlive[p] and before !isAlive[p]
+}
+
+-------
+-- Run 
+-------
+
+run { 
+
+  after #LivingPeople > 1
+  some p: LivingPeople | eventually isDead[p] 
+  some liveness.Unborn 
+  eventually some children
+} for 5 but 10 Time
+
+
+fact {
+  #LivingPeople > 1
+}
+
+-------------------------- 
+-- (Temporal) Constraints 
+--------------------------
+
+
+
+-- Nobody can have more than one father or mother
+fact parentNumberLimit {
+  always
+    all p: Person | 
+      lone (p.parents & Man) and 
+      lone (p.parents & Woman)
+}
+
+fact nobodyIsOwnAncestor {
+  always no p: Person | p in p.^parents
+}
+
+fact noResurrections {
+  always all p: Person | 
+    isDead[p] implies after isDead[p]
+}
+
+fact childrenAreBornFromPreviouslyAliveParents {
+  always all p, q: Person |
+    p in q.children implies !isUnborn[p] and before (once isAlive[q])
+}
+
+
+fact yourParentsAreManAndWoman {
+  always all p: Person | 
+    some p.parents implies some (p.parents & Man) and some (p.parents & Woman)
+}
+
+fact onceYourParentAlwaysYourParent {
+  always (all p, q: Person |
+           p in q.parents implies always (p in q.parents))
+}
+
+fact noRegression {
+  always all p: Person |
+    isAlive[p] implies always !isUnborn[p]
+}
+
+fact onlyOnceLivingPeopleHaveChildren {
+  always all p: Person |
+    some p.children implies once isAlive[p]
+}
+
+fact deadOnlyFromAlive {
+  always all p: Person |
+    isDead[p] implies once isAlive[p]
+}
+
+assert newBornsHaveParents {
+  always all p: Person | newBorn[p] implies some p.parents
+}
+check newBornsHaveParents for 5 but 9 Time
+
+fact noImmortality {
+  always all p: Person |
+    isAlive[p] implies eventually isDead[p]
+}
+
+fact youHaveParentsSinceYouWereBorn {
+  always all p: Person |
+    some p.parents implies (some p.parents since newBorn[p])
+}
+
+fact yourMomIsAliveWhenYouAreBorn {
+  always all p: Person |
+    newBorn[p] implies isAlive[p.parents & Woman]
+}
+
+
+

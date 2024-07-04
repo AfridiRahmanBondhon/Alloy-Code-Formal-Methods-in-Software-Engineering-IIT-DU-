@@ -1,0 +1,20 @@
+Based on the Alloy model you provided, here’s a question that relates to the structure and constraints defined in your model:
+
+**Question:**  
+Suppose in a certain community modeled by your Alloy specifications, there are two individuals, Alice and Bob. Alice is a woman who is married to a man named Chris. Bob has two children, Diana and Edward, who are siblings. 
+Can Diana be married to Chris under the constraints defined in your Alloy model?
+
+**Expected Answer Based on the Alloy Model:**  
+No, Diana cannot be married to Chris because the model enforces that no person can be married to a blood relative, as defined in the predicate `BloodRelatives` and the corresponding constraint within the facts section (`no p: Married | BloodRelatives [p, p.spouse]`). 
+Since Chris is married to Alice and cannot simultaneously be married to Diana without violating the model’s constraints on monogamous marriage and prohibition against incestuous relationships, it is not possible under the given model configuration.
+
+
+
+
+Based on the structure and rules of the Alloy model you provided, here’s a question that adheres to the constraints and concepts defined in your model:
+
+**Question:**  
+In a given scenario conforming to your Alloy model, consider two people, one of whom is a married man. This man has a sibling who also has children. Is it possible for one of the children of the man's sibling to be married to him under the constraints defined in your Alloy model?
+
+**Expected Answer Based on the Alloy Model:**  
+No, it is not possible for one of the children of the man's sibling to be married to him according to the Alloy model. The model explicitly prevents a person from being married to a blood relative, as stated in the fact that "a person can't be married to a blood relative" and "a person can't have children with a blood relative." Since the man and the child of his sibling are blood relatives through their common ancestral link, the marriage between them would violate these constraints.

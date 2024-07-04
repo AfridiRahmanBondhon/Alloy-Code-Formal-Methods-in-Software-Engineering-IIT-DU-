@@ -1,0 +1,48 @@
+Design a Dynamic Educational System Model
+
+Objective: Develop a model using a modeling language to simulate dynamic relationships and educational scenarios within an academic institution over time. The model should reflect the interactions between faculty, students, and courses, capturing life events and academic decisions.
+
+Requirements:
+
+    Time Dynamics:
+        Define a structure to represent different points in time to monitor changes in the academic institution, including course enrollments and faculty assignments.
+
+    Personnel and Course Attributes:
+        Create an abstract type for individuals, categorizing them into students (undergraduate and graduate) and faculty. Attributes should include:
+            For students: ID, courses taken (transcript), current enrollments, and major.
+            For faculty: Departmental affiliation and committee responsibilities (if any).
+        Define the characteristics of courses, including the instructor assigned, students enrolled and waitlisted, and course prerequisites.
+
+    Relationships and Dependencies:
+        Model the dynamic relationships between students and faculty, such as advisory roles and committee memberships.
+        Detail the connections between courses, such as prerequisites and departmental offerings.
+
+    Event Handling:
+        Specify operations for major events such as course enrollment, graduation, and faculty appointments. Describe:
+            Preconditions for each event (e.g., prerequisites for course enrollment).
+            Effects of each event on individual statuses and institutional records.
+            Postconditions that ensure the integrity of academic records.
+
+    Initial Conditions:
+        Establish the initial state of the system, setting clear starting conditions for the relationships and statuses of individuals and courses to ensure a valid simulation outset.
+
+    Simulation Trace:
+        Implement a trace of the system's evolution, showing how relationships, enrollments, and faculty assignments change over time due to academic and life events.
+
+    System Validation:
+        Incorporate predicates to verify realistic constraints and logic, such as:
+            No student can enroll in a course without meeting the prerequisites.
+            Faculty should not be enrolled in the courses they teach.
+            Ensure proper management of waitlists and course capacities.
+
+    Advanced Constraints:
+        Validate that no two students share the same ID.
+        Confirm that all faculty teaching required courses are appropriately assigned within their department.
+
+Model Testing:
+
+    Run simulations to verify the model under different scenarios such as increasing course offerings, changing faculty assignments, or modifying enrollment rules. Ensure that the system can validate or invalidate these scenarios based on the established rules.
+
+Additional Considerations:
+
+    Plan for uncommon but possible scenarios, such as a student re-taking a course or a faculty member moving between departments, maintaining model robustness in all situations.

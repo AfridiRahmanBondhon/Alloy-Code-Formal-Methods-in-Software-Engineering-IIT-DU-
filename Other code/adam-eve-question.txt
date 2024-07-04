@@ -1,0 +1,18 @@
+Design a model representing a family tree with the following requirements using a modeling language of your choice:
+
+    Define an abstract type for a person that includes fields for a spouse and parents.
+    Create subtypes for men and women.
+    Include unique instances for the first man and woman.
+    Define facts to ensure:
+        Each person has one mother and one father.
+        No person can be their own ancestor.
+        Spousal relationships are symmetric.
+        A person cannot be married to their sibling.
+    Include a specific relationship for the first man and woman, ensuring:
+        They are married to each other.
+        They have no parents.
+        All other people have exactly two parents.
+    Write assertions to verify:
+        A person cannot marry themselves.
+        Spouses must be of different genders.
+    Check the assertions to ensure they hold true within the model.

@@ -1,0 +1,37 @@
+Design a Dynamic Hotel Management System
+
+Objective: Develop a model using a modeling language to simulate the dynamic interactions within a hotel management system. Your model should effectively handle the relationships between rooms, guests, and the front desk, specifically focusing on the allocation and management of room keys over time.
+
+Requirements:
+
+    Key and Room Management:
+        Model Keys and Rooms where each room has a set of keys and one current key that changes over time.
+        Implement the tracking of each key to ensure it belongs to only one room at any given time.
+
+    Guest Interactions:
+        Define Guests with attributes to hold keys over different periods.
+        Manage guest interactions such as checking into a room, leaving a room, and accessing a room using a key.
+
+    Front Desk Operations:
+        Create a Front Desk entity responsible for tracking the last key issued for each room and the current occupant of each room.
+        Simulate the processes of check-in and check-out, updating the room's current key and occupant status accordingly.
+
+    Event Handling:
+        Specify operations for guests checking into rooms, checking out, and entering rooms. These operations should detail:
+            Preconditions necessary for each event (e.g., a guest must have the correct key to enter).
+            Effects on room and guest statuses as a result of the event.
+
+    Initial Conditions:
+        Establish initial conditions that no guests have keys and no rooms are occupied, ensuring a valid starting point for the system.
+
+    System Evolution Trace:
+        Implement a trace of system operations over time, showing how key allocations and room occupancies evolve through guest interactions and front desk operations.
+
+    Validation:
+        Use predicates to ensure the system adheres to logical rules such as:
+            No guest can enter a room without holding the correct current key.
+            A room’s last key and its current key at the front desk must always match.
+
+Model Testing:
+
+    Run simulations to validate key management, room assignments, and the integrity of guest interactions under various scenarios, ensuring the model behaves as expected.

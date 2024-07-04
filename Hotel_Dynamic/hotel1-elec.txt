@@ -1,0 +1,122 @@
+open util/ordering [Key] as KO
+
+sig Key {}
+
+sig Room {
+  keys: set Key,
+  var currentKey: Key
+}
+
+sig Guest {
+  var gkeys: set Key
+}
+
+one sig FrontDesk {
+ var lastKey: Room -> lone Key,
+ var occupant: Room -> Guest
+}
+
+
+fact {
+  all k: Key | lone keys.k
+  always all r:Room | r.currentKey in r.keys 
+}
+
+fun nextKey [k: Key, ks: set Key]: set Key
+{
+	KO/min [KO/nexts[k] & ks]
+}
+
+pred init [] {
+  -- no guests have keys
+  no Guest.gkeys
+  -- the roster at the front desk shows
+  -- no room as occupied
+  no FrontDesk.occupant
+  -- the record of each roomâ€™s key at the
+  -- front desk is synchronized with the
+  -- current combination of the lock itself
+  all r: Room | 
+    r.(FrontDesk.lastKey) = r.currentKey
+}
+
+pred entry [ g: Guest, r: Room, k: Key ] {
+  -- the key used to open the lock is one of
+  -- the key the guest holding
+  k in g.gkeys
+  -- pre and post conditions
+     let ck = r.currentKey |
+     -- not a new guest
+	    (k = ck and ck' = ck) 
+        or 
+	 -- new guest
+	   (k = nextKey [ck, r.keys] and ck' = k)
+  -- frame conditions
+     noRoomChangeExcept [r]
+     noGuestChangeExcept [none]
+     noFrontDeskChange
+}
+
+pred noFrontDeskChange [] {
+  FrontDesk.lastKey' = FrontDesk.lastKey
+  FrontDesk.occupant' = FrontDesk.occupant
+}
+
+pred noRoomChangeExcept [rs: set Room] {
+  all r: Room - rs |
+    r.currentKey' = r.currentKey
+}
+
+pred noGuestChangeExcept [gs: set Guest] {
+  all g: Guest - gs | g.gkeys' = g.gkeys
+}
+
+pred checkout [g: Guest] {
+  let occ = FrontDesk.occupant | {
+  -- the guest occupies one or more rooms
+     some occ.g
+  -- the guestâ€™s room become available
+     occ' = occ - (Room -> g)
+	}
+	-- frame condition
+	FrontDesk.lastKey' = FrontDesk.lastKey
+	noRoomChangeExcept [none]
+	noGuestChangeExcept [none]
+}
+
+pred checkin [ g: Guest, r: Room, k: Key ] {
+  -- the guest holds the input key 
+  g.gkeys' = g.gkeys + k
+  let occ = FrontDesk.occupant | {
+    -- the room has no current occupant
+    no r.occ
+    -- the guest becomes the new occupant of the room
+    occ' = occ + r->g 
+  }
+  let lk = FrontDesk.lastKey | {
+    -- the input key becomes the roomâ€™s current key
+    lk' = lk ++ r->k
+    -- the input key is the successor of the last key in 
+    -- the sequence associated to the room
+    k = nextKey [r.lk, r.keys]
+  }
+  noRoomChangeExcept [none]
+  noGuestChangeExcept [g]
+}
+
+fact Traces {
+  init
+  always some g: Guest, r: Room, k: Key |
+       entry [g, r, k] 
+    or checkin [g, r, k]
+    or checkout [g] 
+}
+
+assert noBadEntry  {
+  always all r: Room, g: Guest, k: Key | 
+    let o = r.(FrontDesk.occupant) |
+	(entry [g, r, k] and some o) implies g in o
+}
+
+check noBadEntry for 3 
+but 2 Room, 2 Guest, 5 Time

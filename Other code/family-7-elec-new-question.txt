@@ -1,0 +1,35 @@
+Design a Dynamic Family System Model
+
+Objective: Create a model using a modeling language to simulate dynamic family relationships and life events over time.
+
+Requirements:
+
+    Time Representation: Define a structure to track different time points for changes in family structure and individual statuses.
+
+    Person Attributes: Develop an abstract type for individuals that includes:
+        Variable sets of children, spouses, and parents tied to different times.
+        A state indicating whether the individual is alive, which changes over time.
+
+    Relationship Definitions: Model the dynamic relationships among parents, children, and spouses. Include functions for identifying living individuals, siblings, and blood relatives.
+
+    Event Handling: Specify operations for marriages, births, and deaths, detailing preconditions, effects on relationships and statuses, and post-event adjustments.
+
+    Initial Conditions: Set clear starting conditions for individuals and their relationships to ensure a valid simulation start.
+
+    Simulation Trace: Implement a trace of the system's evolution, showing changes in relationships and statuses due to key events.
+
+    System Validation: Use predicates to ensure:
+        No individual can be their own ancestor.
+        Marriages do not occur if individuals are already married or are blood relatives.
+        Births only occur between married, living couples.
+        Changes in life status (unborn, alive, dead) follow logical sequences.
+
+    Advanced Constraints: Verify no individual has more than one mother or father, only living individuals can marry or have children, marriages are symmetric, and siblings cannot marry.
+
+Model Testing:
+
+    Run simulations to validate marriages, births, and the logical progression of life events, ensuring compliance with established rules.
+
+Additional Considerations:
+
+    Include provisions for handling rare scenarios like resurrection or ancestry recording errors, maintaining model integrity.

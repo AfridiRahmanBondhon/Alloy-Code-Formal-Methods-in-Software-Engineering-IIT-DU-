@@ -1,0 +1,116 @@
+enum Status { On, Off }
+enum Time { T0, T1 }
+
+one sig TrafficLight {
+  var red: Status, 
+  var yellow: Status,  
+  var green: Status,
+  var timer: Time
+}
+fun r : Status { TrafficLight.red }
+fun y : Status { TrafficLight.yellow }
+fun g : Status { TrafficLight.green }
+fun t : Time { TrafficLight.timer }
+
+pred redOn {
+  -- preconditions
+  t = T0
+  y = On
+  -- postconditions
+  r' = On
+  y' = Off
+  t' = T1
+  -- frame conditions
+  g' = g
+}
+
+pred greenOn {
+  -- preconditions
+  t = T0
+  r = On
+  -- postconditions
+  r' = Off
+  g' = On
+  t' = T1
+  -- frame conditions
+  y' = y
+}
+
+pred yellowOn {
+  -- preconditions
+  t = T0
+  g = On
+  -- postconditions
+  g' = Off
+  y' = On
+  -- frame conditions
+  r' = r
+  t' = t
+}
+
+pred steady {
+  -- preconditions
+  t != T0
+  -- postconditions
+  t' = T0  
+  -- frame conditions
+  r' = r
+  g' = g
+  y' = y
+}
+
+fact {
+  r = On
+  g = Off
+  y = Off 
+  t = T1
+  always (redOn or greenOn or yellowOn or steady)
+
+}
+
+run {}
+
+-- each light repeatedly turns on
+-- no two lights are on at the same time
+-- the light starts with red
+-- green directly follows red
+-- yellow directly follows green
+-- red and green are always on twice in a row
+-- yellow is never on twice in a row
+
+
+
+assert each_light_repeatedly_turns_on {
+  always eventually r = On
+  always eventually g = On
+  always eventually y = On
+}
+check each_light_repeatedly_turns_on for 20 steps
+
+assert no_two_lights_are_on_at_the_same_time {
+ r = On => g = Off and y = Off 
+ g = On => r = Off and y = Off 
+ y = On => r = Off and g = Off 
+}
+check no_two_lights_are_on_at_the_same_time for 20 steps
+
+assert the_light_starts_with_red {
+  r = On
+}
+check the_light_starts_with_red
+
+assert green_directly_follows_red {
+  always (g = On and before g = Off implies before r = On)
+}
+check green_directly_follows_red
+
+assert yellow_is_never_on_twice_in_a_row {
+  always (y = On implies after y = Off)
+}
+check yellow_is_never_on_twice_in_a_row
+
+assert red_is_always_on_twice_in_a_row {
+  always (r = On and after r = On implies after after r = Off)
+}
+check red_is_always_on_twice_in_a_row
+
